@@ -395,3 +395,44 @@ journalctl -u redcalibur -n 100 --no-pager
 - Port conflicts: Vite will choose another port (5174) if 5173 is busy; change API port with `--port` in `api/run.py` if needed
 - Scripts say venv missing: create the venv at `.venv` and install requirements (see Quickstart)
 - Missing keys: the app will still run, but some features return reduced data
+
+---
+
+## ☁️ Deploy to Vercel (Frontend only)
+
+Vercel hosts the React frontend. The FastAPI backend should run on a persistent host (Render/Fly.io/Railway/EC2/your server). You have two ways to connect the frontend to the backend:
+
+Option A — Environment variable (simplest)
+1) Deploy your FastAPI backend to a public HTTPS URL (confirm `/health`).
+2) In Vercel → New Project → Import this repo. Set Project root directory to `frontend`.
+3) Build settings:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+4) Add an environment variable in Vercel → Settings → Environment Variables:
+   - Name: `VITE_API_BASE`
+   - Value: `https://your-backend.example.com`
+   - Scope: Production (and Preview if desired)
+5) Deploy. The app will call your backend directly using that URL.
+
+Option B — Rewrites (no CORS, keep `/api`)
+1) Deploy your FastAPI backend to a public HTTPS URL.
+2) Add a `vercel.json` in the `frontend/` folder with:
+```json
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://your-backend.example.com/$1" }
+  ]
+}
+```
+3) Do not set `VITE_API_BASE` in Vercel. The app uses `/api`, which Vercel proxies to your backend.
+4) In Vercel, set root to `frontend`, build to `npm run build`, output to `dist`, then deploy.
+
+Checks after deploy
+- Open your Vercel site → header health badge should show `ok`.
+- DevTools → Network: `/api/health` should succeed (rewrites) or calls should hit your backend URL (env var).
+
+Why FastAPI is required
+- The browser cannot perform many OSINT tasks (port scans, WHOIS, raw sockets, multi-host probes) due to CORS, sandboxing, and blocked network primitives.
+- API keys (Shodan, VirusTotal, Gemini) must be kept server-side. Exposing them in the frontend would leak your secrets.
+- The backend orchestrates parallel tasks with timeouts/retries and aggregates results, which is not reliable purely client-side.
+- Some tasks are long-running or network-heavy and need server resources and control.
