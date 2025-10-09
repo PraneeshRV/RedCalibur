@@ -79,7 +79,6 @@ async def get_agents_status():
             "type": agent.__class__.__name__,
             "ai_enabled": agent.use_ai,
             "model": agent.llm.model_name if agent.use_ai else "rule-based",
-            "capabilities": agent.get_capabilities(),
             "memory_size": len(agent.memory)
         })
     
