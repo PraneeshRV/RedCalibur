@@ -1,6 +1,10 @@
 LICENSE
 README.md
 setup.py
+api/__init__.py
+api/app.py
+api/run.py
+api/smoke_domain.py
 redcalibur/__init__.py
 redcalibur/cli.py
 redcalibur/config.py
@@ -16,6 +20,7 @@ redcalibur/osint/__main__.py
 redcalibur/osint/shodan_integration.py
 redcalibur/osint/shodan_scan.py
 redcalibur/osint/social_media_scraper.py
+redcalibur/osint/url_health_check.py
 redcalibur/osint/virustotal_integration.py
 redcalibur/osint/whois_lookup.py
 redcalibur/phishing_detection/__init__.py
