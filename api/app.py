@@ -17,6 +17,7 @@ from redcalibur.osint.user_identity.username_lookup import lookup_username
 from redcalibur.osint.virustotal_integration import scan_url_full
 from redcalibur.osint.url_health_check import basic_url_health
 from redcalibur.osint.ai_enhanced.recon_summarizer import summarize_recon_data
+from redcalibur.osint.ai_enhanced.local_summarizer import local_bullet_summary
 from redcalibur.osint.ai_enhanced.risk_scoring import calculate_risk_score
 
 logger = setup_logging()
@@ -131,9 +132,11 @@ def domain_recon(req: DomainRequest):
             try:
                 fut = ex_ai.submit(summarize_recon_data, raw_data[:2000])
                 try:
-                    results["ai_summary"] = fut.result(timeout=6.0)
+                    results["ai_summary"] = fut.result(timeout=9.0)
                 except TimeoutError:
-                    errors["ai"] = "timeout"
+                    # Fallback to local summarizer
+                    results["ai_summary"] = local_bullet_summary(raw_data[:2000])
+                    errors["ai"] = "timeout (used local fallback)"
             finally:
                 # Don't wait for the AI call to finish if it's slow
                 ex_ai.shutdown(wait=False, cancel_futures=True)
@@ -216,7 +219,22 @@ def summarize(req: SummarizeRequest):
     try:
         import json
         raw = json.dumps(req.payload, indent=2, default=str)
-        return {"summary": summarize_recon_data(raw[:4000])}
+        # Try online AI with a bounded worker and use local fallback on failure/timeout
+        ex_ai = ThreadPoolExecutor(max_workers=1)
+        try:
+            fut = ex_ai.submit(summarize_recon_data, raw[:4000])
+            try:
+                return {"summary": fut.result(timeout=10.0)}
+            except TimeoutError:
+                return {"summary": local_bullet_summary(raw[:4000]), "note": "ai_timeout_fallback"}
+        finally:
+            ex_ai.shutdown(wait=False, cancel_futures=True)
     except Exception as e:
         logger.error(f"Summarize failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        # On unexpected errors, still return a local summary if possible
+        try:
+            import json
+            raw = json.dumps(req.payload, indent=2, default=str)
+            return {"summary": local_bullet_summary(raw[:4000]), "note": "ai_error_fallback", "error": str(e)}
+        except Exception:
+            raise HTTPException(status_code=500, detail=str(e))
