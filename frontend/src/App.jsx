@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import VisualFX from './components/FX'
-import Landing from './components/Landing'
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
@@ -62,7 +61,6 @@ const Header = ({ palette, setPalette, fx, setFx, apiStatus }) => {
 }
 
 export default function App() {
-  const [showLanding, setShowLanding] = useState(true)
   // Independent loading flags per section so only the triggered action shows a spinner
   const [domainLoading, setDomainLoading] = useState(false)
   const [scanLoading, setScanLoading] = useState(false)
@@ -125,26 +123,8 @@ export default function App() {
     ping(); const id=setInterval(ping,10000); return ()=>{mounted=false; clearInterval(id)}
   },[])
 
-  // Simple Gemini mission generator placeholder via backend summarize
-  const generateMission = async () => {
-    // Reuse summarize endpoint with a themed prompt to avoid exposing keys in frontend
-    const payload = { payload: { brief: 'Generate a short cryptic hacker mission briefing (<40 words). Code name: Archangel. Target: corporate project. Style: tense, high-stakes.' } }
-    try {
-      const res = await fetch(`${API_BASE}/summarize`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
-      const json = await res.json(); return json?.summary || 'No mission received.'
-    } catch { return 'Error contacting mission service.' }
-  }
-
   return (
     <div>
-      {showLanding && (
-        <Landing
-          palette={palette}
-          setPalette={setPalette}
-          onEnter={()=>setShowLanding(false)}
-          generateMission={generateMission}
-        />
-      )}
       <VisualFX palette={palette} flags={fx} />
       <Header palette={palette} setPalette={setPalette} fx={fx} setFx={setFx} apiStatus={apiStatus} />
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
