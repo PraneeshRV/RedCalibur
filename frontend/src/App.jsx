@@ -61,7 +61,11 @@ const Header = ({ palette, setPalette, fx, setFx, apiStatus }) => {
 }
 
 export default function App() {
-  const [loading, setLoading] = useState(false)
+  // Independent loading flags per section so only the triggered action shows a spinner
+  const [domainLoading, setDomainLoading] = useState(false)
+  const [scanLoading, setScanLoading] = useState(false)
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [urlLoading, setUrlLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [logs, setLogs] = useState([])
   const [apiStatus, setApiStatus] = useState('unknown')
@@ -84,9 +88,13 @@ export default function App() {
     if (palette==='blue') {
       root.style.setProperty('--primary-rgb','59,130,246')
       root.style.setProperty('--secondary-rgb','244,63,94')
+      root.style.setProperty('--primary-color','#4299E1')
+      root.style.setProperty('--glow-color','rgba(66,153,225,0.75)')
     } else {
       root.style.setProperty('--primary-rgb','244,63,94')
       root.style.setProperty('--secondary-rgb','59,130,246')
+      root.style.setProperty('--primary-color','#E53E3E')
+      root.style.setProperty('--glow-color','rgba(229,62,62,0.75)')
     }
     try { localStorage.setItem('rc_palette', palette) } catch {}
   }, [palette])
@@ -95,7 +103,6 @@ export default function App() {
 
   const api = useMemo(()=>({
     post: async (path, body, {updateResult=true}={}) => {
-      setLoading(true)
       const start = performance.now()
       try {
         const res = await fetch(`${API_BASE}${path}`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) })
@@ -106,7 +113,7 @@ export default function App() {
       } catch(e) {
         setLogs(l=>[{ time:new Date().toLocaleTimeString(), path, ok:false, error:e.message }, ...l])
         throw e
-      } finally { setLoading(false) }
+      }
     }
   }), [])
 
@@ -122,10 +129,30 @@ export default function App() {
       <Header palette={palette} setPalette={setPalette} fx={fx} setFx={setFx} apiStatus={apiStatus} />
       <main className="relative z-10 max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <Section title="Domain Reconnaissance"><DomainForm onSubmit={(data)=>api.post('/domain', data)} loading={loading} /></Section>
-          <Section title="Network Scan"><ScanForm onSubmit={(data)=>api.post('/scan', data)} loading={loading} /></Section>
-          <Section title="Username Lookup"><UsernameForm onSubmit={(data)=>api.post('/username', data)} loading={loading} /></Section>
-          <Section title="URL Malware Scan (VirusTotal)"><URLScanForm onSubmit={(data)=>api.post('/urlscan', data)} loading={loading} /></Section>
+          <Section title="Domain Reconnaissance">
+            <DomainForm
+              onSubmit={async (data)=>{ setDomainLoading(true); try { await api.post('/domain', data) } finally { setDomainLoading(false) } }}
+              loading={domainLoading}
+            />
+          </Section>
+          <Section title="Network Scan">
+            <ScanForm
+              onSubmit={async (data)=>{ setScanLoading(true); try { await api.post('/scan', data) } finally { setScanLoading(false) } }}
+              loading={scanLoading}
+            />
+          </Section>
+          <Section title="Username Lookup">
+            <UsernameForm
+              onSubmit={async (data)=>{ setUsernameLoading(true); try { await api.post('/username', data) } finally { setUsernameLoading(false) } }}
+              loading={usernameLoading}
+            />
+          </Section>
+          <Section title="URL Malware Scan (VirusTotal)">
+            <URLScanForm
+              onSubmit={async (data)=>{ setUrlLoading(true); try { await api.post('/urlscan', data) } finally { setUrlLoading(false) } }}
+              loading={urlLoading}
+            />
+          </Section>
         </div>
         <div className="space-y-6">
           <Section title="Results">

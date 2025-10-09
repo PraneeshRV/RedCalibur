@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://your-backend.example.com/$1" }
+  ]
+}
