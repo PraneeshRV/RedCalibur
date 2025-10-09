@@ -42,7 +42,12 @@ def detect_services(target: str, ports: List[int], timeout: int = 3) -> List[Dic
             service_info = fingerprint_service(target, port, timeout)
             if service_info:
                 services.append(service_info)
-                logger.info(f"Detected service on {target}:{port} - {service_info.get('service')}")
+                # Only log identified services, not unknown ones
+                service_name = service_info.get('service', 'unknown')
+                if service_name != 'unknown':
+                    logger.info(f"Detected service on {target}:{port} - {service_name}")
+                else:
+                    logger.debug(f"Port {port} open but service unknown")
         except Exception as e:
             logger.error(f"Error detecting service on port {port}: {e}")
     
