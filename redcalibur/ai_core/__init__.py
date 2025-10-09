@@ -28,6 +28,11 @@ import google.generativeai as genai
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
+# Import multi-agent system components
+from .base_agent import BaseAgent, AgentThought, AgentAction, AgentState
+from .orchestrator import AgentOrchestrator
+from .agents import PlannerAgent, ReconAgent, ExploitAgent, ReportingAgent
 logger = logging.getLogger(__name__)
 
 
