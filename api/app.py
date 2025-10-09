@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
 import time
 from redcalibur.osint.network_threat_intel.shodan_integration import perform_shodan_scan
 from redcalibur.osint.user_identity.username_lookup import lookup_username
-from redcalibur.osint.virustotal_integration import scan_url
+from redcalibur.osint.virustotal_integration import scan_url_full
 from redcalibur.osint.url_health_check import basic_url_health
 from redcalibur.osint.ai_enhanced.recon_summarizer import summarize_recon_data
 from redcalibur.osint.ai_enhanced.risk_scoring import calculate_risk_score
@@ -192,7 +192,7 @@ def urlscan(req: URLScanRequest):
         def runner():
             if not config.VIRUSTOTAL_API_KEY:
                 return {"note": "VIRUSTOTAL_API_KEY not configured", "health": basic_url_health(req.url)}
-            return scan_url(config.VIRUSTOTAL_API_KEY, req.url) or {"error": "no_data"}
+            return scan_url_full(config.VIRUSTOTAL_API_KEY, req.url) or {"error": "no_data"}
 
         with ThreadPoolExecutor(max_workers=1) as ex_url:
             fut = ex_url.submit(runner)
