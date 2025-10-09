@@ -436,3 +436,16 @@ Why FastAPI is required
 - API keys (Shodan, VirusTotal, Gemini) must be kept server-side. Exposing them in the frontend would leak your secrets.
 - The backend orchestrates parallel tasks with timeouts/retries and aggregates results, which is not reliable purely client-side.
 - Some tasks are long-running or network-heavy and need server resources and control.
+
+# Terminal 1 - Backend
+cd /home/crimson/Praneesh/RedCalibur
+source redcalibur-env/bin/activate
+uvicorn api.tools_api:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 - Frontend
+cd /home/crimson/Praneesh/RedCalibur/redcalibur-nextjs
+npm run dev
+
+# Kill both processes
+pkill -f uvicorn
+pkill -f "next dev"
