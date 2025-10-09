@@ -30,7 +30,36 @@ class ReconAgent(BaseAgent):
         # Determine target type
         target_type = self._identify_target_type(target)
         
-        analysis = f"""
+        # Use AI reasoning if available
+        if self.use_ai:
+            prompt = f"""You are a reconnaissance specialist for penetration testing.
+
+Target: {target}
+Target Type: {target_type}
+Scan Type: {scan_type}
+
+Available Tools:
+- whois: Domain registration information
+- nmap: Port scanning and service detection
+- subfinder: Subdomain discovery
+- theHarvester: Email and subdomain enumeration
+- shodan: Internet-wide scanning
+- virustotal: Threat intelligence
+- dns_enum: DNS enumeration
+
+Create a detailed reconnaissance strategy:
+1. What information should we gather first?
+2. Which tools to use in what order?
+3. What patterns or anomalies to look for?
+4. How to avoid detection (rate limiting, timing)?
+5. Expected outcomes from each tool
+
+Provide a strategic reconnaissance plan in 3-4 paragraphs."""
+
+            analysis = self._call_llm(prompt)
+        else:
+            # Fallback to rule-based
+            analysis = f"""
 Target: {target}
 Target Type: {target_type}
 Scan Type: {scan_type}

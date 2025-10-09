@@ -24,8 +24,31 @@ class PlannerAgent(BaseAgent):
         objective = context.get('objective', 'Unknown objective')
         target = context.get('target', 'Unknown target')
         
-        # Simple rule-based planning
-        analysis = f"""
+        # Use AI reasoning if available
+        if self.use_ai:
+            prompt = f"""You are a strategic planner for a penetration testing engagement.
+
+Objective: {objective}
+Target: {target}
+
+Analyze this penetration testing objective and provide:
+1. Target assessment (what type of target is this?)
+2. Recommended phases (reconnaissance, vulnerability scanning, exploitation, reporting)
+3. Which specialized agents should handle each phase
+4. Potential risks and blockers
+5. Success criteria
+
+Available specialized agents:
+- ReconAgent: OSINT and reconnaissance (whois, nmap, subfinder, shodan)
+- ExploitAgent: Vulnerability scanning and exploitation (metasploit, sqlmap, nuclei)
+- ReportingAgent: Documentation and report generation
+
+Provide a structured strategic analysis in 3-4 paragraphs."""
+
+            analysis = self._call_llm(prompt)
+        else:
+            # Fallback to rule-based
+            analysis = f"""
 Target Analysis: {target}
 Objective: {objective}
 

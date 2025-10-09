@@ -31,7 +31,47 @@ class ReportingAgent(BaseAgent):
         
         num_findings = len(findings) if isinstance(findings, list) else 0
         
-        analysis = f"""
+        # Use AI reasoning if available
+        if self.use_ai:
+            prompt = f"""You are a cybersecurity report writer.
+
+Engagement: {objective}
+Target: {target}
+Findings: {num_findings} issues identified
+Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+Create a comprehensive report structure that includes:
+1. Executive Summary (high-level overview for management)
+   - Business impact and risk assessment
+   - Key findings summary
+   - Urgency level
+
+2. Technical Findings
+   - Detailed vulnerability descriptions
+   - Proof-of-concept demonstrations
+   - CVSS scoring methodology
+
+3. MITRE ATT&CK Mapping
+   - Tactics and techniques observed
+   - Attack path visualization
+   - Kill chain analysis
+
+4. Prioritized Recommendations
+   - Critical fixes (immediate action)
+   - Important improvements (30 days)
+   - Long-term security enhancements
+
+5. Appendix
+   - Methodology and tools used
+   - Timeline of testing
+   - Scope and limitations
+
+Provide a detailed report outline in 4-5 paragraphs explaining the structure and key elements."""
+
+            analysis = self._call_llm(prompt)
+        else:
+            # Fallback to rule-based
+            analysis = f"""
 Engagement: {objective}
 Target: {target}
 Findings: {num_findings} issues identified

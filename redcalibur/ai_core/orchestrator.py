@@ -23,6 +23,9 @@ class AgentOrchestrator:
         self.execution_history = []
         self.logger = logging.getLogger("orchestrator")
         
+        # Check AI status
+        self.ai_enabled = any(agent.use_ai for agent in self.agents.values())
+        
     def execute_workflow(
         self,
         objective: str,
@@ -46,6 +49,7 @@ class AgentOrchestrator:
         print(f"{'='*70}")
         print(f"Objective: {objective}")
         print(f"Target: {target}")
+        print(f"AI Mode: {'🤖 Gemini AI Enabled' if self.ai_enabled else '📋 Rule-Based Mode'}")
         print(f"{'='*70}\n")
         
         # Start with planner agent
