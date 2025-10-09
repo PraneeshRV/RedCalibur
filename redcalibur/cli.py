@@ -18,6 +18,13 @@ from .osint.search_engine_data_mining.google_dorking import perform_google_dorki
 from .osint.image_file_osint.document_metadata_extraction import extract_document_metadata
 from .osint.image_file_osint.exif_metadata_extraction import extract_exif_metadata
 
+# New imports for enumeration and vulnerability scanning
+from .enumeration.service_detector import detect_services, fingerprint_service
+from .enumeration.banner_grabber import grab_banner
+from .enumeration.directory_enumeration import enumerate_directories, quick_scan
+from .vulnerability_scanning.cve_scanner import scan_for_cves
+from .vulnerability_scanning.service_vuln_check import check_service_vulnerabilities, batch_check_services
+
 class RedCaliburCLI:
     """Professional CLI interface for RedCalibur"""
     
@@ -32,14 +39,27 @@ class RedCaliburCLI:
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="""
 Examples:
+  # Reconnaissance
   redcalibur domain --target example.com --all
   redcalibur scan --target 192.168.1.1 --ports 80,443,22
   redcalibur username --target johndoe --platforms twitter,linkedin
+  
+  # Enumeration
+  redcalibur enumerate --target 192.168.1.1 --banner
+  redcalibur enumerate --target example.com --dir-enum http://example.com
+  
+  # Vulnerability Scanning
+  redcalibur vuln-scan --software apache --version 2.4.41
+  redcalibur vuln-scan --target 192.168.1.1 --ports 80,443,22
+  redcalibur vuln-scan --cve-id CVE-2021-44228
+  
+  # Automated Pentest
+  redcalibur auto-pentest --target 192.168.1.1 --domain example.com
+  
+  # Reports & Utilities
   redcalibur report --input data.json --format pdf
   redcalibur urlscan --url http://example.com
   redcalibur file-osint extract-doc-meta --path /path/to/document.pdf
-  redcalibur file-osint extract-exif --path /path/to/image.jpg
-  redcalibur all --target-domain example.com --target-ip 192.168.1.1 --username johndoe --platforms twitter,linkedin --output summary_report
   redcalibur auto-recon
             """
         )
@@ -101,6 +121,27 @@ Examples:
 
         exif_parser = file_osint_subparsers.add_parser('extract-exif', help='Extract EXIF data from images')
         exif_parser.add_argument('--path', required=True, help='Path to the image file')
+
+        # Enumeration commands
+        enum_parser = subparsers.add_parser('enumerate', help='Service enumeration and fingerprinting')
+        enum_parser.add_argument('--target', required=True, help='Target IP or hostname')
+        enum_parser.add_argument('--ports', help='Comma-separated list of ports (default: common ports)')
+        enum_parser.add_argument('--banner', action='store_true', help='Grab service banners')
+        enum_parser.add_argument('--dir-enum', help='Enumerate directories on web server (provide base URL)')
+        
+        # Vulnerability scanning commands
+        vuln_parser = subparsers.add_parser('vuln-scan', help='Vulnerability scanning')
+        vuln_parser.add_argument('--software', help='Software name to scan for CVEs')
+        vuln_parser.add_argument('--version', help='Software version (optional)')
+        vuln_parser.add_argument('--target', help='Target to scan services and check vulnerabilities')
+        vuln_parser.add_argument('--ports', help='Ports to scan on target (comma-separated)')
+        vuln_parser.add_argument('--cve-id', help='Look up specific CVE by ID')
+        
+        # Automated pentest command
+        pentest_parser = subparsers.add_parser('auto-pentest', help='Automated penetration testing workflow')
+        pentest_parser.add_argument('--target', required=True, help='Target IP or hostname')
+        pentest_parser.add_argument('--domain', help='Target domain (optional)')
+        pentest_parser.add_argument('--output', help='Output filename prefix', default='pentest_report')
 
         return parser.parse_args()
     
@@ -376,6 +417,208 @@ Examples:
         print(json.dumps(results, indent=2, default=str))
         self.logger.info(f"Results saved to {output_file}")
 
+    def run_enumeration(self, args):
+        """Run service enumeration"""
+        results = {
+            "target": args.target,
+            "timestamp": datetime.now().isoformat(),
+            "services": []
+        }
+        
+        try:
+            # Determine ports to scan
+            if args.ports:
+                ports = [int(p.strip()) for p in args.ports.split(',')]
+            else:
+                ports = self.config.DEFAULT_PORTS
+            
+            self.logger.info(f"Enumerating services on {args.target}")
+            
+            # Detect services
+            services = detect_services(args.target, ports)
+            results["services"] = services
+            results["total_services"] = len(services)
+            
+            # Grab banners if requested
+            if args.banner:
+                self.logger.info("Grabbing service banners...")
+                for service in services:
+                    if service.get("state") == "open":
+                        banner_result = grab_banner(args.target, service["port"])
+                        if banner_result.get("success"):
+                            service["detailed_banner"] = banner_result["banner"]
+            
+            # Directory enumeration if URL provided
+            if args.dir_enum:
+                self.logger.info(f"Enumerating directories on {args.dir_enum}")
+                dir_results = quick_scan(args.dir_enum)
+                results["directory_enum"] = dir_results
+            
+        except Exception as e:
+            self.logger.error(f"Error in enumeration: {str(e)}")
+            results["error"] = str(e)
+        
+        # Save results
+        output_file = f"{self.config.OUTPUT_DIR}/enumeration_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+        
+        print(json.dumps(results, indent=2, default=str))
+        self.logger.info(f"Enumeration results saved to {output_file}")
+        
+        return results
+    
+    def run_vulnerability_scan(self, args):
+        """Run vulnerability scanning"""
+        results = {
+            "timestamp": datetime.now().isoformat(),
+            "vulnerabilities": []
+        }
+        
+        try:
+            # Scan by software name
+            if args.software:
+                self.logger.info(f"Scanning for CVEs in {args.software} {args.version or ''}")
+                cve_results = scan_for_cves(args.software, args.version)
+                results["software"] = args.software
+                results["version"] = args.version
+                results["cves"] = cve_results.get("cves", [])
+                results["total_cves"] = cve_results.get("total_found", 0)
+                results["severity_counts"] = {
+                    "critical": cve_results.get("critical_count", 0),
+                    "high": cve_results.get("high_count", 0),
+                    "medium": cve_results.get("medium_count", 0),
+                    "low": cve_results.get("low_count", 0)
+                }
+                
+                if "error" in cve_results:
+                    results["error"] = cve_results["error"]
+            
+            # Scan target with service detection
+            elif args.target:
+                self.logger.info(f"Scanning {args.target} for vulnerabilities")
+                results["target"] = args.target
+                
+                # First, enumerate services
+                if args.ports:
+                    ports = [int(p.strip()) for p in args.ports.split(',')]
+                else:
+                    ports = self.config.DEFAULT_PORTS
+                
+                services = detect_services(args.target, ports)
+                self.logger.info(f"Found {len(services)} services")
+                
+                # Check vulnerabilities for each service
+                vuln_results = batch_check_services(services)
+                results["services"] = vuln_results
+                
+                # Count total vulnerabilities
+                total_vulns = sum(s.get("total_cves", 0) for s in vuln_results)
+                results["total_vulnerabilities"] = total_vulns
+            
+            # Look up specific CVE
+            elif args.cve_id:
+                from .vulnerability_scanning.cve_scanner import search_cve_by_id
+                self.logger.info(f"Looking up {args.cve_id}")
+                cve_data = search_cve_by_id(args.cve_id)
+                results["cve_id"] = args.cve_id
+                results["cve_data"] = cve_data
+            
+        except Exception as e:
+            self.logger.error(f"Error in vulnerability scan: {str(e)}")
+            results["error"] = str(e)
+        
+        # Save results
+        output_file = f"{self.config.OUTPUT_DIR}/vulnerability_scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+        
+        print(json.dumps(results, indent=2, default=str))
+        self.logger.info(f"Vulnerability scan results saved to {output_file}")
+        
+        return results
+    
+    def run_automated_pentest(self, args):
+        """Run automated penetration testing workflow"""
+        self.logger.info(f"Starting automated pentest on {args.target}")
+        
+        results = {
+            "target": args.target,
+            "domain": args.domain,
+            "timestamp": datetime.now().isoformat(),
+            "phases": {}
+        }
+        
+        try:
+            # Phase 1: Reconnaissance
+            self.logger.info("Phase 1: Reconnaissance")
+            if args.domain:
+                recon_results = self.run_domain_recon(argparse.Namespace(
+                    target=args.domain,
+                    whois=True,
+                    dns=True,
+                    subdomains=True,
+                    ssl=True,
+                    all=True
+                ))
+                results["phases"]["reconnaissance"] = recon_results
+            
+            # Phase 2: Enumeration
+            self.logger.info("Phase 2: Service Enumeration")
+            enum_results = self.run_enumeration(argparse.Namespace(
+                target=args.target,
+                ports=None,
+                banner=True,
+                dir_enum=f"http://{args.target}" if not args.target.startswith('http') else args.target
+            ))
+            results["phases"]["enumeration"] = enum_results
+            
+            # Phase 3: Vulnerability Scanning
+            self.logger.info("Phase 3: Vulnerability Scanning")
+            vuln_results = self.run_vulnerability_scan(argparse.Namespace(
+                software=None,
+                version=None,
+                target=args.target,
+                ports=None,
+                cve_id=None
+            ))
+            results["phases"]["vulnerability_scan"] = vuln_results
+            
+            # Phase 4: Risk Assessment Summary
+            self.logger.info("Phase 4: Generating Risk Assessment")
+            total_vulns = vuln_results.get("total_vulnerabilities", 0)
+            open_ports = len([s for s in enum_results.get("services", []) if s.get("state") == "open"])
+            
+            results["risk_summary"] = {
+                "total_vulnerabilities": total_vulns,
+                "open_ports": open_ports,
+                "risk_level": "HIGH" if total_vulns > 10 else "MEDIUM" if total_vulns > 0 else "LOW"
+            }
+            
+        except Exception as e:
+            self.logger.error(f"Error in automated pentest: {str(e)}")
+            results["error"] = str(e)
+        
+        # Generate comprehensive report
+        output_name = f"{self.config.OUTPUT_DIR}/{args.output}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        try:
+            # Save JSON
+            with open(f"{output_name}.json", 'w') as f:
+                json.dump(results, f, indent=2, default=str)
+            
+            # Generate Markdown report
+            generate_markdown_report(results, f"{output_name}.md")
+            
+            self.logger.info(f"Automated pentest complete. Reports saved: {output_name}")
+            
+        except Exception as e:
+            self.logger.error(f"Error generating pentest report: {str(e)}")
+        
+        print(json.dumps(results, indent=2, default=str))
+        
+        return results
+
     def run(self):
         """Main CLI entry point"""
         args = self.parse_arguments()
@@ -413,6 +656,15 @@ Examples:
             return
         elif args.command == 'file-osint':
             self.run_file_osint(args)
+            return
+        elif args.command == 'enumerate':
+            results = self.run_enumeration(args)
+            return
+        elif args.command == 'vuln-scan':
+            results = self.run_vulnerability_scan(args)
+            return
+        elif args.command == 'auto-pentest':
+            results = self.run_automated_pentest(args)
             return
             
         if results:
