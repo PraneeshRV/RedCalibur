@@ -2,7 +2,7 @@
 
 > "Forged at the intersection of artificial intelligence and offensive cybersecurity."
 
-**RedCalibur** is a professional, AI-powered red teaming toolkit designed to automate and enhance various phases of penetration testing, with a primary focus on comprehensive OSINT (Open Source Intelligence) reconnaissance. It leverages machine learning and large language models (LLMs) to supercharge ethical hacking workflows.
+**RedCalibur** is a professional, AI-powered red teaming toolkit designed to automate  and enhance various phases of penetration testing, with a primary focus on comprehensive OSINT (Open Source Intelligence) reconnaissance. It leverages machine learning and large language models (LLMs) to supercharge ethical hacking workflows.
 
 This project serves both as a practical cybersecurity tool and as a demonstration of applying neural networks and AI in cybersecurity for academic purposes.
 
