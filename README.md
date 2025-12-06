@@ -231,7 +231,7 @@ PRs and issues are welcome. Please open an issue to discuss larger changes.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see `LICENSE`
 
 ---
 
